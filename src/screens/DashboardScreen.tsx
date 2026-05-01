@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, StatusBar,
+  RefreshControl, StatusBar, Alert,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { CATEGORIES } from '../constants/categories';
@@ -14,11 +15,14 @@ import {
   getCurrentMonth, formatMonth, formatCurrency,
   getMonthlyStats, getTransactionsByMonth, getBudgetForMonth,
   deleteTransaction,
-} from '../utils/storage';
+} from '../utils/firestoreStorage';
+import { useAuth } from '../context/AuthContext';
 import { MonthlyStats, Transaction, MonthlyBudget } from '../types';
 
 const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const { familyId, familyName, logout } = useAuth();
   const [month] = useState(getCurrentMonth());
   const [stats, setStats] = useState<MonthlyStats>({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, byCategory: {} });
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([]);
@@ -26,10 +30,11 @@ const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = async () => {
+    if (!familyId) return;
     const [s, txs, b] = await Promise.all([
-      getMonthlyStats(month),
-      getTransactionsByMonth(month),
-      getBudgetForMonth(month),
+      getMonthlyStats(familyId, month),
+      getTransactionsByMonth(familyId, month),
+      getBudgetForMonth(familyId, month),
     ]);
     setStats(s);
     setRecentTxs(txs.slice(0, 5));
@@ -44,8 +49,16 @@ const DashboardScreen: React.FC = () => {
   const spendingLimit = budget.income - savingsGoalAmt;
 
   const handleDelete = async (id: string) => {
-    await deleteTransaction(id);
+    if (!familyId) return;
+    await deleteTransaction(familyId, id);
     load();
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: logout },
+    ]);
   };
 
   return (
@@ -53,16 +66,16 @@ const DashboardScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Family Budget</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>{familyName ?? 'Family Budget'}</Text>
           <Text style={styles.headerSub}>{formatMonth(month)}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('AddTransaction')}
-        >
-          <MaterialIcons name="add" size={26} color={Colors.white} />
+        <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('AddTransaction')}>
+          <MaterialIcons name="add" size={24} color={Colors.white} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.addBtn, { marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.15)' }]} onPress={handleLogout}>
+          <MaterialIcons name="logout" size={22} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -178,7 +191,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   header: {
     backgroundColor: Colors.primary,
-    paddingTop: 52,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: 'row',

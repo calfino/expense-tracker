@@ -4,6 +4,7 @@ import {
   TextInput, Alert, StatusBar,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import BudgetProgress from '../components/BudgetProgress';
@@ -12,11 +13,14 @@ import {
   getCurrentMonth, formatMonth, formatCurrency,
   getTransactionsByMonth, getBudgetForMonth, setBudgetForMonth,
   deleteTransaction,
-} from '../utils/storage';
+} from '../utils/firestoreStorage';
+import { useAuth } from '../context/AuthContext';
 import { Transaction, MonthlyBudget } from '../types';
 
 const IncomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const { familyId } = useAuth();
   const [month] = useState(getCurrentMonth());
   const [budget, setBudgetState] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
   const [incomeInput, setIncomeInput] = useState('');
@@ -24,7 +28,11 @@ const IncomeScreen: React.FC = () => {
   const [editing, setEditing] = useState(false);
 
   const load = async () => {
-    const [b, txs] = await Promise.all([getBudgetForMonth(month), getTransactionsByMonth(month)]);
+    if (!familyId) return;
+    const [b, txs] = await Promise.all([
+      getBudgetForMonth(familyId, month),
+      getTransactionsByMonth(familyId, month),
+    ]);
     setBudgetState(b);
     setIncomeInput(b.income > 0 ? String(b.income) : '');
     setIncomeTxs(txs.filter((t) => t.type === 'income'));
@@ -33,10 +41,11 @@ const IncomeScreen: React.FC = () => {
   useFocusEffect(useCallback(() => { load(); }, []));
 
   const saveIncome = async () => {
+    if (!familyId) return;
     const val = parseFloat(incomeInput);
     if (isNaN(val) || val < 0) { Alert.alert('Invalid amount'); return; }
     const updated: MonthlyBudget = { ...budget, income: val };
-    await setBudgetForMonth(updated);
+    await setBudgetForMonth(familyId, updated);
     setBudgetState(updated);
     setEditing(false);
   };
@@ -44,12 +53,16 @@ const IncomeScreen: React.FC = () => {
   const totalIncomeRecords = incomeTxs.reduce((s, t) => s + t.amount, 0);
   const savingsGoalAmt = (budget.income * budget.savingsGoalPercent) / 100;
 
-  const handleDelete = async (id: string) => { await deleteTransaction(id); load(); };
+  const handleDelete = async (id: string) => {
+    if (!familyId) return;
+    await deleteTransaction(familyId, id);
+    load();
+  };
 
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.headerTitle}>Income</Text>
           <Text style={styles.headerSub}>{formatMonth(month)}</Text>
@@ -130,7 +143,7 @@ const IncomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
-  header: { backgroundColor: Colors.primary, paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  header: { backgroundColor: Colors.primary, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerTitle: { fontSize: 22, fontWeight: '800', color: Colors.white },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   addBtn: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },

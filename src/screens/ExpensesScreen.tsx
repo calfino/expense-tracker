@@ -4,6 +4,7 @@ import {
   Alert, StatusBar,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { CATEGORIES } from '../constants/categories';
@@ -11,17 +12,21 @@ import TransactionItem from '../components/TransactionItem';
 import {
   getCurrentMonth, formatMonth, formatCurrency,
   getTransactionsByMonth, deleteTransaction,
-} from '../utils/storage';
+} from '../utils/firestoreStorage';
+import { useAuth } from '../context/AuthContext';
 import { Transaction, CategoryId } from '../types';
 
 const ExpensesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const { familyId } = useAuth();
   const [month] = useState(getCurrentMonth());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filterCat, setFilterCat] = useState<CategoryId | 'all'>('all');
 
   const load = async () => {
-    const txs = await getTransactionsByMonth(month);
+    if (!familyId) return;
+    const txs = await getTransactionsByMonth(familyId, month);
     setTransactions(txs.filter((t) => t.type === 'expense'));
   };
 
@@ -32,7 +37,8 @@ const ExpensesScreen: React.FC = () => {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
-          await deleteTransaction(id);
+          if (!familyId) return;
+          await deleteTransaction(familyId, id);
           load();
         },
       },
@@ -51,7 +57,7 @@ const ExpensesScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.headerTitle}>Expenses</Text>
           <Text style={styles.headerSub}>{formatMonth(month)}</Text>
@@ -121,7 +127,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   header: {
     backgroundColor: Colors.primary,
-    paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20,
+    paddingBottom: 16, paddingHorizontal: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: Colors.white },

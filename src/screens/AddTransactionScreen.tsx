@@ -7,7 +7,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { CATEGORIES } from '../constants/categories';
-import { addTransaction, updateTransaction } from '../utils/storage';
+import { addTransaction, updateTransaction } from '../utils/firestoreStorage';
+import { useAuth } from '../context/AuthContext';
 import { Transaction, CategoryId } from '../types';
 
 type RouteParams = {
@@ -17,6 +18,7 @@ type RouteParams = {
 
 const AddTransactionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { familyId } = useAuth();
   const route = useRoute();
   const { transaction, defaultType } = (route.params as RouteParams) ?? {};
 
@@ -44,8 +46,9 @@ const AddTransactionScreen: React.FC = () => {
     const month = date.substring(0, 7); // Extract YYYY-MM from YYYY-MM-DD
 
     try {
+      if (!familyId) throw new Error('No family linked to account.');
       if (isEditing && transaction) {
-        await updateTransaction({
+        await updateTransaction(familyId, {
           ...transaction,
           type,
           amount: parsed,
@@ -55,7 +58,7 @@ const AddTransactionScreen: React.FC = () => {
           month,
         });
       } else {
-        await addTransaction({
+        await addTransaction(familyId, {
           type,
           amount: parsed,
           categoryId: type === 'expense' ? categoryId : 'other',
@@ -219,7 +222,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   header: {
     backgroundColor: Colors.primary,
-    paddingTop: 52, paddingBottom: 16, paddingHorizontal: 16,
+    paddingBottom: 16, paddingHorizontal: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   backBtn: { padding: 4 },

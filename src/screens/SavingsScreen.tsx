@@ -4,16 +4,20 @@ import {
   TextInput, Alert, StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import BudgetProgress from '../components/BudgetProgress';
 import {
   getCurrentMonth, formatMonth, formatCurrency,
   getMonthlyStats, getBudgetForMonth, setBudgetForMonth,
-} from '../utils/storage';
+} from '../utils/firestoreStorage';
+import { useAuth } from '../context/AuthContext';
 import { MonthlyBudget, MonthlyStats } from '../types';
 
 const SavingsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  const { familyId } = useAuth();
   const [month] = useState(getCurrentMonth());
   const [budget, setBudgetState] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
   const [stats, setStats] = useState<MonthlyStats>({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, byCategory: {} });
@@ -21,7 +25,11 @@ const SavingsScreen: React.FC = () => {
   const [editingGoal, setEditingGoal] = useState(false);
 
   const load = async () => {
-    const [b, s] = await Promise.all([getBudgetForMonth(month), getMonthlyStats(month)]);
+    if (!familyId) return;
+    const [b, s] = await Promise.all([
+      getBudgetForMonth(familyId, month),
+      getMonthlyStats(familyId, month),
+    ]);
     setBudgetState(b);
     setStats(s);
     setGoalInput(String(b.savingsGoalPercent));
@@ -30,13 +38,14 @@ const SavingsScreen: React.FC = () => {
   useFocusEffect(useCallback(() => { load(); }, []));
 
   const saveGoal = async () => {
+    if (!familyId) return;
     const val = parseFloat(goalInput);
     if (isNaN(val) || val < 0 || val > 100) {
       Alert.alert('Invalid value', 'Savings goal must be between 0 and 100.');
       return;
     }
     const updated: MonthlyBudget = { ...budget, savingsGoalPercent: val };
-    await setBudgetForMonth(updated);
+    await setBudgetForMonth(familyId, updated);
     setBudgetState(updated);
     setEditingGoal(false);
   };
@@ -55,7 +64,7 @@ const SavingsScreen: React.FC = () => {
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.headerTitle}>Savings</Text>
           <Text style={styles.headerSub}>{formatMonth(month)}</Text>
@@ -113,8 +122,9 @@ const SavingsScreen: React.FC = () => {
                 key={p}
                 style={[styles.preset, budget.savingsGoalPercent === p && { backgroundColor: Colors.primary }]}
                 onPress={async () => {
+                  if (!familyId) return;
                   const updated: MonthlyBudget = { ...budget, savingsGoalPercent: p };
-                  await setBudgetForMonth(updated);
+                  await setBudgetForMonth(familyId, updated);
                   setBudgetState(updated);
                   setGoalInput(String(p));
                 }}
@@ -181,7 +191,7 @@ const SavingsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
-  header: { backgroundColor: Colors.primary, paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  header: { backgroundColor: Colors.primary, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerTitle: { fontSize: 22, fontWeight: '800', color: Colors.white },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
