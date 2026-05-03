@@ -90,16 +90,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ─── Register + join existing family ─────────────────────────────────────────
 
   const registerAndJoin = async (email: string, password: string, inviteCode: string) => {
-    const familySnap = await getDoc(doc(db, 'families', inviteCode));
-    if (!familySnap.exists()) throw new Error('Invalid invite code. Ask your family admin.');
     skipNextLoad.current = true;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await updateDoc(doc(db, 'families', inviteCode), { members: arrayUnion(cred.user.uid) });
-    await setDoc(doc(db, 'users', cred.user.uid), { familyId: inviteCode, email });
-    setUser(cred.user);
-    setFamilyId(inviteCode);
-    setFamilyName(familySnap.data().name ?? null);
-    setLoading(false);
+
+    try {
+      const familySnap = await getDoc(doc(db, 'families', inviteCode));
+      if (!familySnap.exists()) throw new Error('Invalid invite code. Ask your family admin.');
+      
+      await updateDoc(doc(db, 'families', inviteCode), { members: arrayUnion(cred.user.uid) });
+      await setDoc(doc(db, 'users', cred.user.uid), { familyId: inviteCode, email });
+      
+      setUser(cred.user);
+      setFamilyId(inviteCode);
+      setFamilyName(familySnap.data().name ?? null);
+    } catch (e) {
+      setUser(cred.user);
+      setFamilyId(null);
+      setFamilyName(null);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── For Google-signed-in users who still need a family ──────────────────────
