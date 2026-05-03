@@ -8,6 +8,12 @@ export type CategoryId =
   | 'health'
   | 'entertainment'
   | 'clothing'
+  | 'laundry'
+  | 'home_supplies'
+  | 'fy_bill'
+  | 'jct_bill'
+  | 'groceries_snacks'
+  | 'credit_card'
   | 'other';
 
 export interface Category {

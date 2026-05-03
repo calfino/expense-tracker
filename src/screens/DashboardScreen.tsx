@@ -11,6 +11,7 @@ import { CATEGORIES } from '../constants/categories';
 import SummaryCard from '../components/SummaryCard';
 import BudgetProgress from '../components/BudgetProgress';
 import TransactionItem from '../components/TransactionItem';
+import CustomModal from '../components/CustomModal';
 import {
   getCurrentMonth, formatMonth, formatCurrency,
   getMonthlyStats, getTransactionsByMonth, getBudgetForMonth,
@@ -28,6 +29,8 @@ const DashboardScreen: React.FC = () => {
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([]);
   const [budget, setBudget] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
   const [refreshing, setRefreshing] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const load = async () => {
     if (!familyId) return;
@@ -55,17 +58,7 @@ const DashboardScreen: React.FC = () => {
   };
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      // Alert.alert callbacks don't fire on web — use native confirm
-      if ((window as any).confirm('Are you sure you want to sign out?')) {
-        logout();
-      }
-    } else {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: logout },
-      ]);
-    }
+    setShowLogoutModal(true);
   };
 
   return (
@@ -80,6 +73,12 @@ const DashboardScreen: React.FC = () => {
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('AddTransaction')}>
           <MaterialIcons name="add" size={24} color={Colors.white} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.addBtn, { marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.15)' }]} 
+          onPress={() => setShowInviteModal(true)}
+        >
+          <MaterialIcons name="person-add" size={22} color={Colors.white} />
         </TouchableOpacity>
         <TouchableOpacity style={[styles.addBtn, { marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.15)' }]} onPress={handleLogout}>
           <MaterialIcons name="logout" size={22} color={Colors.white} />
@@ -190,6 +189,33 @@ const DashboardScreen: React.FC = () => {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Modals */}
+      <CustomModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        title="Family Invite Code"
+        message={`Your Family ID is:\n\n${familyId}\n\nShare this code so others can join your family group.`}
+        icon="person-add"
+        iconColor={Colors.primary}
+        primaryButtonText="Got it"
+        onPrimaryPress={() => setShowInviteModal(false)}
+      />
+
+      <CustomModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Sign Out"
+        message="Are you sure you want to sign out of your account?"
+        icon="logout"
+        iconColor={Colors.expense}
+        primaryButtonText="Sign Out"
+        secondaryButtonText="Cancel"
+        onPrimaryPress={() => {
+          setShowLogoutModal(false);
+          logout();
+        }}
+      />
     </View>
   );
 };
