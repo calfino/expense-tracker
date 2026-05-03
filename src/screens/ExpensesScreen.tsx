@@ -129,6 +129,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingBottom: 16, paddingHorizontal: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    zIndex: 10, position: 'relative',
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: Colors.white },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, StatusBar, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
 import { CATEGORIES } from '../constants/categories';
 import { addTransaction, updateTransaction } from '../utils/firestoreStorage';
@@ -20,6 +21,7 @@ const AddTransactionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { familyId } = useAuth();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { transaction, defaultType } = (route.params as RouteParams) ?? {};
 
   const isEditing = !!transaction;
@@ -87,7 +89,7 @@ const AddTransactionScreen: React.FC = () => {
         <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <MaterialIcons name="arrow-back" size={24} color={Colors.white} />
           </TouchableOpacity>
@@ -223,6 +225,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.primary,
     paddingBottom: 16, paddingHorizontal: 16,
+    paddingTop: 12, // overridden by insets at runtime
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   backBtn: { padding: 4 },

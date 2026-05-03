@@ -68,6 +68,8 @@ const TabNavigator: React.FC = () => {
 };
 
 // ─── Root Stack ───────────────────────────────────────────────────────────────
+// Keep Stack.Navigator ALWAYS mounted — React Navigation requires this.
+// Conditionally register auth screens or app screens based on auth state.
 
 const Stack = createNativeStackNavigator();
 
@@ -82,18 +84,28 @@ const RootNavigator: React.FC = () => {
     );
   }
 
-  if (!user || !familyId) {
-    return <LoginScreen />;
-  }
+  const isAuthenticated = !!user && !!familyId;
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Main" component={TabNavigator} />
-      <Stack.Screen
-        name="AddTransaction"
-        component={AddTransactionScreen}
-        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-      />
+      {!isAuthenticated ? (
+        // ── Auth screens ──────────────────────────────────────────────────────
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ animationTypeForReplace: !user ? 'pop' : 'push' }}
+        />
+      ) : (
+        // ── App screens ───────────────────────────────────────────────────────
+        <>
+          <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen
+            name="AddTransaction"
+            component={AddTransactionScreen}
+            options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+          />
+        </>
+      )}
     </Stack.Navigator>
   );
 };
