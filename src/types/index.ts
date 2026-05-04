@@ -1,20 +1,4 @@
-export type CategoryId =
-  | 'education'
-  | 'babysitter'
-  | 'electricity'
-  | 'water'
-  | 'food'
-  | 'transportation'
-  | 'health'
-  | 'entertainment'
-  | 'clothing'
-  | 'laundry'
-  | 'home_supplies'
-  | 'fy_bill'
-  | 'jct_bill'
-  | 'groceries_snacks'
-  | 'credit_card'
-  | 'other';
+export type CategoryId = string;
 
 export interface Category {
   id: CategoryId;
@@ -22,6 +6,14 @@ export interface Category {
   icon: string;
   color: string;
   bgColor: string;
+}
+
+export interface Family {
+  id?: string;
+  name: string;
+  members: string[];
+  billingCycleStartDay?: number;
+  customCategories?: Category[];
 }
 
 export type TransactionType = 'expense' | 'income';

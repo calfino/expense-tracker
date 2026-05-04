@@ -19,10 +19,12 @@ type RouteParams = {
 
 const AddTransactionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { familyId } = useAuth();
+  const { familyId, billingCycleStartDay, customCategories } = useAuth();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { transaction, defaultType } = (route.params as RouteParams) ?? {};
+
+  const allCategories = [...CATEGORIES, ...(customCategories || [])];
 
   const isEditing = !!transaction;
 
@@ -45,7 +47,7 @@ const AddTransactionScreen: React.FC = () => {
     }
 
     setSaving(true);
-    const month = getBillingMonth(date);
+    const month = getBillingMonth(date, billingCycleStartDay);
 
     try {
       if (!familyId) throw new Error('No family linked to account.');
@@ -145,7 +147,7 @@ const AddTransactionScreen: React.FC = () => {
             <View style={styles.card}>
               <Text style={styles.fieldLabel}>Category</Text>
               <View style={styles.categoryGrid}>
-                {CATEGORIES.map((cat) => {
+                {allCategories.map((cat) => {
                   const selected = categoryId === cat.id;
                   return (
                     <TouchableOpacity

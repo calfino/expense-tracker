@@ -19,8 +19,9 @@ import { Transaction, CategoryId } from '../types';
 const ExpensesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { familyId } = useAuth();
-  const [month] = useState(getCurrentMonth());
+  const { familyId, billingCycleStartDay, customCategories } = useAuth();
+  const [month, setMonth] = useState(getCurrentMonth(billingCycleStartDay));
+  const allCategories = [...CATEGORIES, ...(customCategories || [])];
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filterCat, setFilterCat] = useState<CategoryId | 'all'>('all');
 
@@ -79,7 +80,7 @@ const ExpensesScreen: React.FC = () => {
       {/* Category Filter */}
       <View style={styles.filterWrap}>
         <FlatList
-          data={[{ id: 'all', label: 'All' }, ...CATEGORIES.filter((c) => usedCats.includes(c.id))] as any[]}
+          data={[{ id: 'all', label: 'All' }, ...allCategories.filter((c) => usedCats.includes(c.id))] as any[]}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}

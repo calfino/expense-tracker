@@ -7,7 +7,7 @@ import { Transaction, MonthlyBudget, MonthlyStats } from '../types';
 
 // ─── Helpers (unchanged from original storage.ts) ────────────────────────────
 
-export const getBillingMonth = (dateInput: string | Date): string => {
+export const getBillingMonth = (dateInput: string | Date, startDay: number = 25): string => {
   let d: Date;
   if (typeof dateInput === 'string' && dateInput.includes('-')) {
     const [y, m, day] = dateInput.split('-');
@@ -16,15 +16,16 @@ export const getBillingMonth = (dateInput: string | Date): string => {
     d = new Date(dateInput);
   }
 
-  // If date is 25th or later, it belongs to the next month's cycle
-  if (d.getDate() >= 25) {
+  // If date is startDay or later, it belongs to the next month's cycle
+  // If startDay is 1, it's just the calendar month.
+  if (startDay > 1 && d.getDate() >= startDay) {
     d.setMonth(d.getMonth() + 1);
   }
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-export const getCurrentMonth = (): string => {
-  return getBillingMonth(new Date());
+export const getCurrentMonth = (startDay: number = 25): string => {
+  return getBillingMonth(new Date(), startDay);
 };
 
 export const formatMonth = (month: string): string => {

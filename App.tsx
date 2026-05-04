@@ -13,6 +13,7 @@ import IncomeScreen from './src/screens/IncomeScreen';
 import SavingsScreen from './src/screens/SavingsScreen';
 import AddTransactionScreen from './src/screens/AddTransactionScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import { Colors } from './src/constants/colors';
 
 // ─── Tab Navigator ────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ const tabConfig: Record<string, { label: string; icon: TabIconName }> = {
   Expenses:  { label: 'Expenses', icon: 'receipt-long' },
   Income:    { label: 'Income', icon: 'trending-up' },
   Savings:   { label: 'Savings', icon: 'savings' },
+  Settings:  { label: 'Settings', icon: 'settings' },
 };
 
 const TabNavigator: React.FC = () => {
@@ -63,6 +65,7 @@ const TabNavigator: React.FC = () => {
       <Tab.Screen name="Expenses"  component={ExpensesScreen}  options={{ tabBarLabel: 'Expenses' }} />
       <Tab.Screen name="Income"    component={IncomeScreen}    options={{ tabBarLabel: 'Income' }} />
       <Tab.Screen name="Savings"   component={SavingsScreen}   options={{ tabBarLabel: 'Savings' }} />
+      <Tab.Screen name="Settings"  component={SettingsScreen}  options={{ tabBarLabel: 'Settings' }} />
     </Tab.Navigator>
   );
 };

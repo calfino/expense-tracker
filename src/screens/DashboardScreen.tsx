@@ -23,8 +23,9 @@ import { MonthlyStats, Transaction, MonthlyBudget } from '../types';
 const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { familyId, familyName, logout } = useAuth();
-  const [month] = useState(getCurrentMonth());
+  const { familyId, familyName, logout, billingCycleStartDay, customCategories } = useAuth();
+  const [month, setMonth] = useState(getCurrentMonth(billingCycleStartDay));
+  const allCategories = [...CATEGORIES, ...(customCategories || [])];
   const [stats, setStats] = useState<MonthlyStats>({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, byCategory: {} });
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([]);
   const [budget, setBudget] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
@@ -150,7 +151,7 @@ const DashboardScreen: React.FC = () => {
         {Object.keys(stats.byCategory).length > 0 && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Spending by Category</Text>
-            {CATEGORIES.filter((c) => stats.byCategory[c.id] > 0).map((cat) => (
+            {allCategories.filter((c) => stats.byCategory[c.id] > 0).map((cat) => (
               <View key={cat.id} style={styles.catRow}>
                 <View style={[styles.catDot, { backgroundColor: cat.color }]} />
                 <Text style={styles.catLabel}>{cat.label}</Text>

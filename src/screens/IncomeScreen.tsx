@@ -20,8 +20,8 @@ import { Transaction, MonthlyBudget } from '../types';
 const IncomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { familyId } = useAuth();
-  const [month] = useState(getCurrentMonth());
+  const { familyId, billingCycleStartDay } = useAuth();
+  const [month, setMonth] = useState(getCurrentMonth(billingCycleStartDay));
   const [budget, setBudgetState] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
   const [incomeInput, setIncomeInput] = useState('');
   const [incomeTxs, setIncomeTxs] = useState<Transaction[]>([]);

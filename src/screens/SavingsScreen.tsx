@@ -17,8 +17,8 @@ import { MonthlyBudget, MonthlyStats } from '../types';
 
 const SavingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { familyId } = useAuth();
-  const [month] = useState(getCurrentMonth());
+  const { familyId, billingCycleStartDay } = useAuth();
+  const [month, setMonth] = useState(getCurrentMonth(billingCycleStartDay));
   const [budget, setBudgetState] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
   const [stats, setStats] = useState<MonthlyStats>({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, byCategory: {} });
   const [goalInput, setGoalInput] = useState('20');
