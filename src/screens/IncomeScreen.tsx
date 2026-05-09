@@ -17,6 +17,24 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Transaction, MonthlyBudget } from '../types';
 
+type SortKey = 'date' | 'amount' | 'name';
+type SortDir = 'asc' | 'desc';
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'date',   label: 'Date' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'name',   label: 'Name' },
+];
+
+const sortTransactions = (list: Transaction[], key: SortKey, dir: SortDir): Transaction[] =>
+  [...list].sort((a, b) => {
+    let cmp = 0;
+    if (key === 'date')   cmp = a.date.localeCompare(b.date);
+    if (key === 'amount') cmp = a.amount - b.amount;
+    if (key === 'name')   cmp = a.note.toLowerCase().localeCompare(b.note.toLowerCase());
+    return dir === 'asc' ? cmp : -cmp;
+  });
+
 const IncomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -26,6 +44,8 @@ const IncomeScreen: React.FC = () => {
   const [incomeInput, setIncomeInput] = useState('');
   const [incomeTxs, setIncomeTxs] = useState<Transaction[]>([]);
   const [editing, setEditing] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const load = async () => {
     if (!familyId) return;
@@ -58,6 +78,17 @@ const IncomeScreen: React.FC = () => {
     await deleteTransaction(familyId, id);
     load();
   };
+
+  const handleSortPress = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
+  const sortedIncomeTxs = sortTransactions(incomeTxs, sortKey, sortDir);
 
   return (
     <View style={styles.screen}>
@@ -123,6 +154,35 @@ const IncomeScreen: React.FC = () => {
           <Text style={[styles.badge, { backgroundColor: Colors.incomeBg, color: Colors.income }]}>{formatCurrency(totalIncomeRecords)}</Text>
         </View>
 
+        {/* Sort Toolbar */}
+        {incomeTxs.length > 0 && (
+          <View style={styles.sortBar}>
+            <Text style={styles.sortLabel}>Sort:</Text>
+            {SORT_OPTIONS.map((opt) => {
+              const active = sortKey === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.sortChip, active && styles.sortChipActive]}
+                  onPress={() => handleSortPress(opt.key)}
+                >
+                  <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>
+                    {opt.label}
+                  </Text>
+                  {active && (
+                    <MaterialIcons
+                      name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+                      size={12}
+                      color={Colors.white}
+                      style={{ marginLeft: 3 }}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         {incomeTxs.length === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons name="account-balance" size={52} color={Colors.gray300} />
@@ -130,7 +190,7 @@ const IncomeScreen: React.FC = () => {
             <Text style={styles.emptySub}>Tap + to log an income source</Text>
           </View>
         ) : (
-          incomeTxs.map((tx) => (
+          sortedIncomeTxs.map((tx) => (
             <TransactionItem key={tx.id} transaction={tx} onDelete={handleDelete}
               onPress={() => navigation.navigate('AddTransaction', { transaction: tx })} />
           ))
@@ -168,6 +228,12 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 40 },
   emptyTxt: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, marginTop: 12 },
   emptySub: { fontSize: 13, color: Colors.textMuted, marginTop: 4 },
+  sortBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sortLabel: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
+  sortChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 5, borderRadius: 16, backgroundColor: Colors.gray100, borderWidth: 1, borderColor: Colors.border },
+  sortChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  sortChipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  sortChipTextActive: { color: Colors.white },
 });
 
 export default IncomeScreen;

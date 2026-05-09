@@ -16,6 +16,25 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Transaction, CategoryId } from '../types';
 
+type SortKey = 'date' | 'amount' | 'name';
+type SortDir = 'asc' | 'desc';
+
+const SORT_OPTIONS: { key: SortKey; label: string; iconAsc: string; iconDesc: string }[] = [
+  { key: 'date',   label: 'Date',   iconAsc: 'arrow-upward',   iconDesc: 'arrow-downward' },
+  { key: 'amount', label: 'Amount', iconAsc: 'arrow-upward',   iconDesc: 'arrow-downward' },
+  { key: 'name',   label: 'Name',   iconAsc: 'arrow-upward',   iconDesc: 'arrow-downward' },
+];
+
+const sortTransactions = (list: Transaction[], key: SortKey, dir: SortDir): Transaction[] => {
+  return [...list].sort((a, b) => {
+    let cmp = 0;
+    if (key === 'date')   cmp = a.date.localeCompare(b.date);
+    if (key === 'amount') cmp = a.amount - b.amount;
+    if (key === 'name')   cmp = a.note.toLowerCase().localeCompare(b.note.toLowerCase());
+    return dir === 'asc' ? cmp : -cmp;
+  });
+};
+
 const ExpensesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -23,6 +42,8 @@ const ExpensesScreen: React.FC = () => {
   const [month] = useState(getCurrentMonth());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filterCat, setFilterCat] = useState<CategoryId | 'all'>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const load = async () => {
     if (!familyId) return;
@@ -45,9 +66,20 @@ const ExpensesScreen: React.FC = () => {
     ]);
   };
 
+  const handleSortPress = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
   const filtered = filterCat === 'all'
     ? transactions
     : transactions.filter((t) => t.categoryId === filterCat);
+
+  const sorted = sortTransactions(filtered, sortKey, sortDir);
 
   const total = filtered.reduce((s, t) => s + t.amount, 0);
   const usedCats = Array.from(new Set(transactions.map((t) => t.categoryId)));
@@ -97,8 +129,35 @@ const ExpensesScreen: React.FC = () => {
         />
       </View>
 
+      {/* Sort Toolbar */}
+      <View style={styles.sortBar}>
+        <Text style={styles.sortLabel}>Sort by:</Text>
+        {SORT_OPTIONS.map((opt) => {
+          const active = sortKey === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.sortChip, active && styles.sortChipActive]}
+              onPress={() => handleSortPress(opt.key)}
+            >
+              <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>
+                {opt.label}
+              </Text>
+              {active && (
+                <MaterialIcons
+                  name={sortDir === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+                  size={13}
+                  color={Colors.white}
+                  style={{ marginLeft: 3 }}
+                />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {/* List */}
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <View style={styles.emptyWrap}>
           <MaterialIcons name="receipt-long" size={56} color={Colors.gray300} />
           <Text style={styles.emptyText}>No expenses found</Text>
@@ -106,7 +165,7 @@ const ExpensesScreen: React.FC = () => {
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={sorted}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -152,6 +211,35 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   chipText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  // Sort bar
+  sortBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 8,
+  },
+  sortLabel: { fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginRight: 2 },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: Colors.gray100,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sortChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  sortChipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  sortChipTextActive: { color: Colors.white },
+  // List
   list: { padding: 16 },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
   emptyText: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, marginTop: 16 },
