@@ -11,6 +11,7 @@ import { CATEGORIES } from '../constants/categories';
 import SummaryCard from '../components/SummaryCard';
 import BudgetProgress from '../components/BudgetProgress';
 import TransactionItem from '../components/TransactionItem';
+import CustomModal from '../components/CustomModal';
 import {
   getCurrentMonth, formatMonth, formatCurrency,
   getMonthlyStats, getTransactionsByMonth, getBudgetForMonth,
@@ -22,12 +23,15 @@ import { MonthlyStats, Transaction, MonthlyBudget } from '../types';
 const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { familyId, familyName, logout } = useAuth();
-  const [month] = useState(getCurrentMonth());
+  const { familyId, familyName, logout, billingCycleStartDay, customCategories } = useAuth();
+  const [month, setMonth] = useState(getCurrentMonth(billingCycleStartDay));
+  const allCategories = [...CATEGORIES, ...(customCategories || [])];
   const [stats, setStats] = useState<MonthlyStats>({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, byCategory: {} });
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([]);
   const [budget, setBudget] = useState<MonthlyBudget>({ month, income: 0, savingsGoalPercent: 20 });
   const [refreshing, setRefreshing] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const load = async () => {
     if (!familyId) return;
@@ -55,17 +59,7 @@ const DashboardScreen: React.FC = () => {
   };
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      // Alert.alert callbacks don't fire on web — use native confirm
-      if ((window as any).confirm('Are you sure you want to sign out?')) {
-        logout();
-      }
-    } else {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: logout },
-      ]);
-    }
+    setShowLogoutModal(true);
   };
 
   return (
@@ -80,6 +74,12 @@ const DashboardScreen: React.FC = () => {
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('AddTransaction')}>
           <MaterialIcons name="add" size={24} color={Colors.white} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.addBtn, { marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.15)' }]} 
+          onPress={() => setShowInviteModal(true)}
+        >
+          <MaterialIcons name="person-add" size={22} color={Colors.white} />
         </TouchableOpacity>
         <TouchableOpacity style={[styles.addBtn, { marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.15)' }]} onPress={handleLogout}>
           <MaterialIcons name="logout" size={22} color={Colors.white} />
@@ -151,7 +151,7 @@ const DashboardScreen: React.FC = () => {
         {Object.keys(stats.byCategory).length > 0 && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Spending by Category</Text>
-            {CATEGORIES.filter((c) => stats.byCategory[c.id] > 0).map((cat) => (
+            {allCategories.filter((c) => stats.byCategory[c.id] > 0).map((cat) => (
               <View key={cat.id} style={styles.catRow}>
                 <View style={[styles.catDot, { backgroundColor: cat.color }]} />
                 <Text style={styles.catLabel}>{cat.label}</Text>
@@ -190,6 +190,33 @@ const DashboardScreen: React.FC = () => {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Modals */}
+      <CustomModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        title="Family Invite Code"
+        message={`Your Family ID is:\n\n${familyId}\n\nShare this code so others can join your family group.`}
+        icon="person-add"
+        iconColor={Colors.primary}
+        primaryButtonText="Got it"
+        onPrimaryPress={() => setShowInviteModal(false)}
+      />
+
+      <CustomModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Sign Out"
+        message="Are you sure you want to sign out of your account?"
+        icon="logout"
+        iconColor={Colors.expense}
+        primaryButtonText="Sign Out"
+        secondaryButtonText="Cancel"
+        onPrimaryPress={() => {
+          setShowLogoutModal(false);
+          logout();
+        }}
+      />
     </View>
   );
 };

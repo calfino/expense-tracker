@@ -12,6 +12,7 @@ import {
   doc, getDoc, setDoc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { Category } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,8 @@ interface AuthContextType {
   user: User | null;
   familyId: string | null;
   familyName: string | null;
+  billingCycleStartDay: number;
+  customCategories: Category[];
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, familyName: string) => Promise<void>;
@@ -27,6 +30,7 @@ interface AuthContextType {
   joinFamilyForCurrentUser: (inviteCode: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  updateFamilySettings: (settings: { billingCycleStartDay?: number; customCategories?: Category[] }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -38,6 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [familyName, setFamilyName] = useState<string | null>(null);
+  const [billingCycleStartDay, setBillingCycleStartDay] = useState<number>(25);
+  const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   // Prevents onAuthStateChanged from overwriting familyId set during registration
   const skipNextLoad = useRef(false);
@@ -49,7 +55,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fid = userSnap.data().familyId as string;
       setFamilyId(fid);
       const familySnap = await getDoc(doc(db, 'families', fid));
-      if (familySnap.exists()) setFamilyName(familySnap.data().name ?? null);
+      if (familySnap.exists()) {
+        const d = familySnap.data();
+        setFamilyName(d.name ?? null);
+        setBillingCycleStartDay(d.billingCycleStartDay ?? 25);
+        setCustomCategories(d.customCategories ?? []);
+      }
     } catch (e) {
       console.warn('loadFamilyData error:', e);
     }
@@ -84,22 +95,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(cred.user);
     setFamilyId(fid);
     setFamilyName(name);
+    setBillingCycleStartDay(25);
+    setCustomCategories([]);
     setLoading(false);
   };
 
   // ─── Register + join existing family ─────────────────────────────────────────
 
   const registerAndJoin = async (email: string, password: string, inviteCode: string) => {
-    const familySnap = await getDoc(doc(db, 'families', inviteCode));
-    if (!familySnap.exists()) throw new Error('Invalid invite code. Ask your family admin.');
     skipNextLoad.current = true;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await updateDoc(doc(db, 'families', inviteCode), { members: arrayUnion(cred.user.uid) });
-    await setDoc(doc(db, 'users', cred.user.uid), { familyId: inviteCode, email });
-    setUser(cred.user);
-    setFamilyId(inviteCode);
-    setFamilyName(familySnap.data().name ?? null);
-    setLoading(false);
+
+    try {
+      const familySnap = await getDoc(doc(db, 'families', inviteCode));
+      if (!familySnap.exists()) throw new Error('Invalid invite code. Ask your family admin.');
+      
+      await updateDoc(doc(db, 'families', inviteCode), { members: arrayUnion(cred.user.uid) });
+      await setDoc(doc(db, 'users', cred.user.uid), { familyId: inviteCode, email });
+      
+      setUser(cred.user);
+      setFamilyId(inviteCode);
+      setFamilyName(familySnap.data().name ?? null);
+      setBillingCycleStartDay(familySnap.data().billingCycleStartDay ?? 25);
+      setCustomCategories(familySnap.data().customCategories ?? []);
+    } catch (e) {
+      setUser(cred.user);
+      setFamilyId(null);
+      setFamilyName(null);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── For Google-signed-in users who still need a family ──────────────────────
@@ -111,6 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await setDoc(doc(db, 'users', uid), { familyId: uid, email: auth.currentUser.email }, { merge: true });
     setFamilyId(uid);
     setFamilyName(name);
+    setBillingCycleStartDay(25);
+    setCustomCategories([]);
   };
 
   const joinFamilyForCurrentUser = async (inviteCode: string) => {
@@ -122,6 +150,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await setDoc(doc(db, 'users', uid), { familyId: inviteCode, email: auth.currentUser.email }, { merge: true });
     setFamilyId(inviteCode);
     setFamilyName(familySnap.data().name ?? null);
+    setBillingCycleStartDay(familySnap.data().billingCycleStartDay ?? 25);
+    setCustomCategories(familySnap.data().customCategories ?? []);
   };
 
   // ─── Google Sign-In ───────────────────────────────────────────────────────────
@@ -143,14 +173,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signOut(auth);
     setFamilyId(null);
     setFamilyName(null);
+    setBillingCycleStartDay(25);
+    setCustomCategories([]);
+  };
+
+  const updateFamilySettings = async (settings: { billingCycleStartDay?: number; customCategories?: Category[] }) => {
+    if (!familyId) return;
+    await updateDoc(doc(db, 'families', familyId), settings as any);
+    if (settings.billingCycleStartDay !== undefined) {
+      setBillingCycleStartDay(settings.billingCycleStartDay);
+    }
+    if (settings.customCategories !== undefined) {
+      setCustomCategories(settings.customCategories);
+    }
   };
 
   return (
     <AuthContext.Provider value={{
-      user, familyId, familyName, loading,
+      user, familyId, familyName, billingCycleStartDay, customCategories, loading,
       login, register, registerAndJoin,
       createFamilyForCurrentUser, joinFamilyForCurrentUser,
-      signInWithGoogle, logout,
+      signInWithGoogle, logout, updateFamilySettings,
     }}>
       {children}
     </AuthContext.Provider>

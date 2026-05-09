@@ -16,8 +16,22 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid in request.resource.data.members;
 
-      // READ / UPDATE / DELETE: only existing members
-      allow read, update, delete: if request.auth != null
+      // GET: allow any authenticated user to fetch a family by ID (needed for invite code validation)
+      allow get: if request.auth != null;
+      
+      // LIST: only existing members
+      allow list: if request.auth != null
+        && request.auth.uid in resource.data.members;
+
+      // UPDATE / DELETE: allow if existing member, OR if adding themselves (joining)
+      allow update: if request.auth != null
+        && (
+             request.auth.uid in resource.data.members 
+             || 
+             request.auth.uid in request.resource.data.members
+           );
+           
+      allow delete: if request.auth != null
         && request.auth.uid in resource.data.members;
 
       // Transactions subcollection

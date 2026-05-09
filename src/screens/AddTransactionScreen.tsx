@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
 import { CATEGORIES } from '../constants/categories';
-import { addTransaction, updateTransaction } from '../utils/firestoreStorage';
+import { addTransaction, updateTransaction, getBillingMonth } from '../utils/firestoreStorage';
 import { useAuth } from '../context/AuthContext';
 import { Transaction, CategoryId } from '../types';
 
@@ -19,10 +19,12 @@ type RouteParams = {
 
 const AddTransactionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { familyId } = useAuth();
+  const { familyId, billingCycleStartDay, customCategories } = useAuth();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { transaction, defaultType } = (route.params as RouteParams) ?? {};
+
+  const allCategories = [...CATEGORIES, ...(customCategories || [])];
 
   const isEditing = !!transaction;
 
@@ -45,7 +47,7 @@ const AddTransactionScreen: React.FC = () => {
     }
 
     setSaving(true);
-    const month = date.substring(0, 7); // Extract YYYY-MM from YYYY-MM-DD
+    const month = getBillingMonth(date, billingCycleStartDay);
 
     try {
       if (!familyId) throw new Error('No family linked to account.');
@@ -145,7 +147,7 @@ const AddTransactionScreen: React.FC = () => {
             <View style={styles.card}>
               <Text style={styles.fieldLabel}>Category</Text>
               <View style={styles.categoryGrid}>
-                {CATEGORIES.map((cat) => {
+                {allCategories.map((cat) => {
                   const selected = categoryId === cat.id;
                   return (
                     <TouchableOpacity
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
   amountRow: { flexDirection: 'row', alignItems: 'center' },
   currSign: { fontSize: 24, fontWeight: '800', marginRight: 6 },
-  amountInput: { flex: 1, fontSize: 38, fontWeight: '900' },
+  amountInput: { flex: 1, fontSize: 38, fontWeight: '900', paddingVertical: 0, margin: 0 },
   card: {
     backgroundColor: Colors.white, borderRadius: 18, padding: 16, marginBottom: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
@@ -268,6 +270,7 @@ const styles = StyleSheet.create({
     fontSize: 15, color: Colors.textPrimary,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     paddingVertical: 8, minHeight: 48,
+    textAlignVertical: 'top', // For Android multiline
   },
   dateInput: {
     fontSize: 16, color: Colors.textPrimary,
