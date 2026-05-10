@@ -41,7 +41,7 @@ const DashboardScreen: React.FC = () => {
       getBudgetForMonth(familyId, month),
     ]);
     setStats(s);
-    setRecentTxs(txs.slice(0, 5));
+    setRecentTxs([...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5));
     setBudget(b);
   };
 
