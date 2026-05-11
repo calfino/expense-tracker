@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Alert, StatusBar,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,17 +54,10 @@ const ExpensesScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete Transaction', 'Are you sure you want to delete this entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          if (!familyId) return;
-          await deleteTransaction(familyId, id);
-          load();
-        },
-      },
-    ]);
+  const handleDelete = async (id: string) => {
+    if (!familyId) return;
+    await deleteTransaction(familyId, id);
+    load();
   };
 
   const handleSortPress = (key: SortKey) => {
